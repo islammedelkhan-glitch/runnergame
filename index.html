@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Финальный Раннер</title>
+
+    <style>
+        body {
+            background-color: #111;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: sans-serif;
+        }
+        #gameCanvas {
+            /* Фон игрового поля - "дорожка" */
+            background-color: #333; 
+            border: 5px solid #fff;
+            display: block;
+        }
+        #game-container {
+            position: relative;
+            text-align: center;
+        }
+        #score {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #fff;
+            font-size: 1.5em;
+            z-index: 10;
+        }
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2em;
+            cursor: pointer;
+        }
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+        <div id="score">Счет: 0</div>
+        <div id="start-screen">
+            <h1>Бесконечный Раннер</h1>
+            <p>Нажмите ПРОБЕЛ, чтобы начать и прыгать!</p>
+        </div>
+    </div>
+
+    <script>
+        // Этот код не требует DOMContentLoaded, так как он находится после элементов HTML.
+
+        // --- Настройка игры ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score');
+        const startScreen = document.getElementById('start-screen');
+
+        const gameWidth = canvas.width;
+        const gameHeight = canvas.height;
+
+        // --- Параметры игрока ---
+        const player = {
+            x: 50,
+            y: gameHeight, 
+            width: 30,
+            height: 30,
+            color: '#00ccff',
+            velocityY: 0,
+            gravity: 0.8,
+            jumpStrength: -15,
+            isJumping: false
+        };
+
+        // --- Параметры игры и препятствий ---
+        let obstacles = [];
+        let gameSpeed = 3;
+        let score = 0;
+        let isGameOver = true;
+        let spawnInterval = 150; 
+        let spawnCounter = 0;
+
+        // --- Основные функции ---
+
+        function drawPlayer() {
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y - player.height, player.width, player.height);
+        }
+
+        function updatePlayer() {
+            const groundY = gameHeight; 
+
+            if (player.isJumping || player.y < groundY) {
+                player.velocityY += player.gravity; 
+                player.y += player.velocityY;
+
+                if (player.y >= groundY) {
+                    player.y = groundY;
+                    player.isJumping = false;
+                    player.velocityY = 0;
+                }
+            }
+        }
+
+        function createObstacle() {
+            const obstacleWidth = 20;
+            const obstacleHeight = Math.random() * (70 - 30) + 30; 
+            const obstacleY = gameHeight - obstacleHeight; 
+
+            obstacles.push({
+                x: gameWidth,
+                y: obstacleY,
+                width: obstacleWidth,
+                height: obstacleHeight,
+                color: '#ff3333'
+            });
+        }
+
+        function updateObstacles() {
+            for (let i = 0; i < obstacles.length; i++) {
+                let obs = obstacles[i];
+                
+                obs.x -= gameSpeed;
+
+                ctx.fillStyle = obs.color;
+                ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+
+                // --- Проверка столкновения ---
+                if (
+                    player.x < obs.x + obs.width &&
+                    player.x + player.width > obs.x &&
+                    player.y - player.height < obs.y + obs.height && 
+                    player.y > obs.y 
+                ) {
+                    gameOver();
+                    return;
+                }
+
+                if (obs.x + obs.width < 0) {
+                    obstacles.splice(i, 1);
+                    i--;
+                    score++; 
+                    scoreDisplay.textContent = 'Счет: ' + score;
+                }
+            }
+
+            spawnCounter++;
+            if (spawnCounter >= spawnInterval) {
+                createObstacle();
+                spawnCounter = 0;
+                gameSpeed += 0.05;
+                if (spawnInterval > 40) {
+                    spawnInterval -= 0.5;
+                }
+            }
+        }
+
+        function jump() {
+            if (!player.isJumping && player.y === gameHeight) {
+                player.isJumping = true;
+                player.velocityY = player.jumpStrength;
+            }
+        }
+
+        function gameLoop() {
+            if (isGameOver) return;
+            
+            ctx.fillStyle = '#333';
+            ctx.fillRect(0, 0, gameWidth, gameHeight);
+            
+            updatePlayer();
+            drawPlayer();
+            updateObstacles();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function gameOver() {
+            isGameOver = true;
+            startScreen.classList.remove('hidden');
+            startScreen.querySelector('h1').textContent = 'Игра окончена!';
+            startScreen.querySelector('p').textContent = 'Ваш счет: ' + score + '. Нажмите, чтобы начать сначала.';
+            gameSpeed = 3;
+            spawnInterval = 150;
+        }
+
+        function startGame() {
+            isGameOver = false;
+            startScreen.classList.add('hidden');
+            score = 0;
+            scoreDisplay.textContent = 'Счет: 0';
+            obstacles = [];
+            
+            player.y = gameHeight;
+            player.isJumping = false;
+            player.velocityY = 0;
+            
+            gameLoop();
+        }
+
+        // --- Обработчики событий ---
+        startScreen.addEventListener('click', () => {
+            if (isGameOver) {
+                startGame();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.code === 'Space' || event.code === 'ArrowUp') {
+                event.preventDefault(); 
+                if (isGameOver) {
+                    startGame();
+                } else {
+                    jump();
+                }
+            }
+        });
+        
+        // Начальная отрисовка
+        ctx.fillStyle = '#333';
+        ctx.fillRect(0, 0, gameWidth, gameHeight);
+    </script>
+</body>
+</html>

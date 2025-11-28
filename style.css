@@ -1,0 +1,10 @@
+#gameCanvas {
+    background-color: #333; /* Должен быть темный фон */
+    border: 5px solid #fff;
+    display: block;
+}
+#start-screen {
+    background-color: rgba(0, 0, 0, 0.8); /* Стартовый экран должен быть черным */
+    color: white; /* Текст должен быть белым */
+    /* ... остальной код CSS ... */
+}
